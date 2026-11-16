@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import BoxField from './BoxField.jsx';
 import Barcode from './Barcode.jsx';
 import { api, money, date, dateTime } from './api.js';
+import { SALESPEOPLE } from '../server/salespeople.js';
 
 function Progress({ v }) {
   const pct = v.initial ? (v.balance / v.initial) * 100 : 0;
@@ -9,6 +11,33 @@ function Progress({ v }) {
     <div className="progress" aria-hidden="true">
       <div style={{ width: `${pct}%` }} />
     </div>
+  );
+}
+
+function SalespersonPicker({ amount, onPick, onCancel }) {
+  useEffect(() => {
+    const key = e => { if (e.key === 'Escape') onCancel(); };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, [onCancel]);
+
+  // Portal to <body> so the tilted card's transform doesn't affect the overlay
+  return createPortal(
+    <div className="modal-backdrop" onClick={onCancel}>
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="sp-title" onClick={e => e.stopPropagation()}>
+        <div id="sp-title" className="modal-title">Who is making this sale?</div>
+        <div className="muted small">Deducting {money(amount)}</div>
+        <div className="sp-grid">
+          {SALESPEOPLE.map((name, i) => (
+            <button key={name} className="sp-btn" onClick={() => onPick(name)} autoFocus={i === 0}>{name}</button>
+          ))}
+        </div>
+        <div className="modal-actions">
+          <button className="ghost" onClick={onCancel}>Cancel</button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -70,21 +99,28 @@ function VoucherDetail({ v, onChanged, onDeleted, celebrate, appleWallet }) {
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [shake, setShake] = useState(false);
+  const [picking, setPicking] = useState(false);
 
   const loadHistory = useCallback(() => api.transactions(v.id).then(setHistory).catch(() => {}), [v.id]);
 
   useEffect(() => {
-    setAmount(''); setNote(''); setMsg(null); setConfirmDelete(false);
+    setAmount(''); setNote(''); setMsg(null); setConfirmDelete(false); setPicking(false);
     loadHistory();
   }, [v.id, loadHistory]);
 
-  async function deduct(e) {
+  function askSalesperson(e) {
     e.preventDefault();
+    setMsg(null);
+    setPicking(true);
+  }
+
+  async function deduct(salesperson) {
+    setPicking(false);
     setBusy(true); setMsg(null);
     try {
-      const { voucher, transaction } = await api.deduct(v.id, { amount, note });
+      const { voucher, transaction } = await api.deduct(v.id, { amount, note, salesperson });
       onChanged(voucher);
-      setMsg({ type: 'ok', text: `Deducted ${money(transaction.amount)}. Remaining ${money(voucher.balance)}.` });
+      setMsg({ type: 'ok', text: `Deducted ${money(transaction.amount)} by ${transaction.salesperson} at ${dateTime(transaction.createdAt)}. Remaining ${money(voucher.balance)}.` });
       setAmount(''); setNote('');
       loadHistory();
       celebrate();
@@ -135,7 +171,7 @@ function VoucherDetail({ v, onChanged, onDeleted, celebrate, appleWallet }) {
       )}
 
       {v.status === 'active' ? (
-        <form className="deduct" onSubmit={deduct}>
+        <form className="deduct" onSubmit={askSalesperson}>
           <div className="deduct-row">
             <div className={`amount ${shake ? 'shake' : ''}`}>
               <span>$</span>
@@ -157,6 +193,7 @@ function VoucherDetail({ v, onChanged, onDeleted, celebrate, appleWallet }) {
         <p className="msg muted">{v.status === 'expired' ? 'This voucher has expired.' : 'This voucher has no credit left.'}</p>
       )}
       {msg && <p className={`msg ${msg.type}`} role="status">{msg.text}</p>}
+      {picking && <SalespersonPicker amount={amountNum} onPick={deduct} onCancel={() => setPicking(false)} />}
 
       <div className="history">
         <div className="section-title">History</div>
@@ -167,7 +204,7 @@ function VoucherDetail({ v, onChanged, onDeleted, celebrate, appleWallet }) {
             <div key={t.id} className="history-row">
               <div>
                 <div>-{money(t.amount)}</div>
-                <div className="muted small">{dateTime(t.createdAt)}{t.note ? ` · ${t.note}` : ''}</div>
+                <div className="muted small">{dateTime(t.createdAt)}{t.salesperson ? ` · ${t.salesperson}` : ''}{t.note ? ` · ${t.note}` : ''}</div>
               </div>
               <div className="muted small right">Bal. {money(t.balanceAfter)}</div>
             </div>

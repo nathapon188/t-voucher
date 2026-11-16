@@ -3,6 +3,7 @@
 import { getDatabase, MissingDatabaseConnectionError } from '@netlify/database';
 import crypto from 'node:crypto';
 import { buildPass, walletEnabled } from './wallet.js';
+import { SALESPEOPLE } from './salespeople.js';
 
 let sql;
 let ready;
@@ -45,6 +46,7 @@ async function init() {
         note                 TEXT,
         created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
+    await s`ALTER TABLE voucher_transactions ADD COLUMN IF NOT EXISTS salesperson TEXT`;
     await s`CREATE INDEX IF NOT EXISTS voucher_transactions_voucher_id_idx ON voucher_transactions (voucher_id)`;
   })();
   try {
@@ -83,6 +85,7 @@ const txView = t => ({
   amount: t.amount_cents / 100,
   balanceAfter: t.balance_after_cents / 100,
   note: t.note,
+  salesperson: t.salesperson,
   createdAt: t.created_at
 });
 
@@ -155,6 +158,8 @@ async function deduct(id, body) {
   const cents = toCents(body.amount);
   if (!cents) return json({ error: 'Enter an amount greater than $0.00.' }, 400);
   const note = (body.note || '').toString().trim().slice(0, 200) || null;
+  const salesperson = (body.salesperson || '').toString().trim().toUpperCase();
+  if (!SALESPEOPLE.includes(salesperson)) return json({ error: 'Select a salesperson.' }, 400);
 
   // One atomic statement: only deducts if there is enough credit and the voucher hasn't expired,
   // so two deductions at the same moment can never overspend the balance.
@@ -165,8 +170,8 @@ async function deduct(id, body) {
         AND (expires_at IS NULL OR expires_at > now())
       RETURNING *
     ), tx AS (
-      INSERT INTO voucher_transactions (voucher_id, amount_cents, balance_after_cents, note)
-      SELECT id, ${cents}::int, balance_cents, ${note}::text FROM upd
+      INSERT INTO voucher_transactions (voucher_id, amount_cents, balance_after_cents, note, salesperson)
+      SELECT id, ${cents}::int, balance_cents, ${note}::text, ${salesperson}::text FROM upd
       RETURNING *
     )
     SELECT row_to_json(upd.*) AS voucher, row_to_json(tx.*) AS tx FROM upd, tx`;

@@ -24,8 +24,8 @@ for (const v of data.vouchers) {
   added++;
   for (const t of data.voucher_transactions.filter(t => t.voucher_id === v.id)) {
     await sql`
-      INSERT INTO voucher_transactions (voucher_id, amount_cents, balance_after_cents, note, created_at)
-      VALUES (${rows[0].id}::int, ${t.amount_cents}::int, ${t.balance_after_cents}::int, ${t.note}, ${t.created_at})`;
+      INSERT INTO voucher_transactions (voucher_id, amount_cents, balance_after_cents, note, salesperson, created_at)
+      VALUES (${rows[0].id}::int, ${t.amount_cents}::int, ${t.balance_after_cents}::int, ${t.note}, ${t.salesperson ?? null}, ${t.created_at})`;
     txAdded++;
   }
 }
