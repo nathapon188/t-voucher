@@ -183,3 +183,17 @@ button.ghost:hover { background: rgba(212,175,55,0.1); }
   .add-form { grid-template-columns: 1fr; }
   .balance-value { font-size: 32px; }
 }
+
+.barcode {
+  margin: 14px 0 4px; padding: 6px; border-radius: 10px; background: #fff;
+  display: flex; justify-content: center;
+}
+.barcode svg { max-width: 100%; height: auto; display: block; }
+.wallet-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin: 8px 0 4px; padding: 10px 14px; border-radius: 10px;
+  background: #000; color: #fff; border: 1px solid #444;
+  font-weight: 600; text-decoration: none;
+}
+.wallet-btn:hover { border-color: var(--gold); }
+.wallet-btn svg { width: 18px; height: 18px; }

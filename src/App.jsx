@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import BoxField from './BoxField.jsx';
+import Barcode from './Barcode.jsx';
 import { api, money, date, dateTime } from './api.js';
 
 function Progress({ v }) {
@@ -61,7 +62,7 @@ function AddVoucher({ onAdded, onCancel }) {
   );
 }
 
-function VoucherDetail({ v, onChanged, onDeleted, celebrate }) {
+function VoucherDetail({ v, onChanged, onDeleted, celebrate, appleWallet }) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [history, setHistory] = useState([]);
@@ -125,6 +126,14 @@ function VoucherDetail({ v, onChanged, onDeleted, celebrate }) {
       </div>
       <Progress v={v} />
 
+      <Barcode value={v.code} />
+      {appleWallet && v.status === 'active' && (
+        <a className="wallet-btn" href={`/api/vouchers/${v.id}/pass`}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M3 10h18M3 13.5h18" stroke="currentColor" strokeWidth="1.6" /></svg>
+          Add to Apple Wallet
+        </a>
+      )}
+
       {v.status === 'active' ? (
         <form className="deduct" onSubmit={deduct}>
           <div className="deduct-row">
@@ -186,6 +195,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tilt, setTilt] = useState('');
+  const [appleWallet, setAppleWallet] = useState(false);
+
+  useEffect(() => { api.config().then(c => setAppleWallet(c.appleWallet)).catch(() => {}); }, []);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -268,6 +280,7 @@ export default function App() {
                 <VoucherDetail
                   v={selected}
                   celebrate={celebrate}
+                  appleWallet={appleWallet}
                   onChanged={nv => setVouchers(list => list.map(x => (x.id === nv.id ? nv : x)))}
                   onDeleted={id => { setVouchers(list => list.filter(x => x.id !== id)); setSelectedId(null); }}
                 />

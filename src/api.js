@@ -6,6 +6,7 @@ async function call(url, options = {}) {
 }
 
 export const api = {
+  config: () => call('/api/config'),
   list: q => call(`/api/vouchers${q ? `?q=${encodeURIComponent(q)}` : ''}`),
   create: body => call('/api/vouchers', { method: 'POST', body: JSON.stringify(body) }),
   remove: id => call(`/api/vouchers/${id}`, { method: 'DELETE' }),

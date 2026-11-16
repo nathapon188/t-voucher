@@ -4,3 +4,5 @@
 
 [functions]
   node_bundler = "esbuild"
+  # Pass images (and optional cert files) read at runtime for Apple Wallet passes
+  included_files = ["server/pass-assets/**", "certs/**"]

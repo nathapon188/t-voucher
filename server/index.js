@@ -14,7 +14,9 @@ app.all('/api/*', async (req, res) => {
     body: ['GET', 'HEAD', 'DELETE'].includes(req.method) ? undefined : JSON.stringify(req.body ?? {})
   });
   const response = await handleApi(request);
-  res.status(response.status).type('application/json').send(await response.text());
+  res.status(response.status);
+  response.headers.forEach((value, key) => res.setHeader(key, value));
+  res.send(Buffer.from(await response.arrayBuffer()));
 });
 
 const port = process.env.PORT || 3001;

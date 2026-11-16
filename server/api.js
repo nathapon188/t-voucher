@@ -2,6 +2,7 @@
 // Takes a standard Request and returns a standard Response.
 import { getDatabase, MissingDatabaseConnectionError } from '@netlify/database';
 import crypto from 'node:crypto';
+import { buildPass, walletEnabled } from './wallet.js';
 
 let sql;
 let ready;
@@ -179,12 +180,28 @@ async function deduct(id, body) {
   return json({ error: `Not enough credit. Remaining balance is $${(v.balance_cents / 100).toFixed(2)}.` }, 409);
 }
 
+async function walletPass(id) {
+  if (!walletEnabled()) return json({ error: 'Apple Wallet is not set up yet.' }, 503);
+  const rows = await db()`SELECT * FROM vouchers WHERE id = ${id}::int`;
+  if (!rows.length) return json({ error: 'Voucher not found.' }, 404);
+  const v = rows[0];
+  return new Response(buildPass(v), {
+    headers: {
+      'Content-Type': 'application/vnd.apple.pkpass',
+      'Content-Disposition': `attachment; filename="voucher-${v.code}.pkpass"`,
+      'Cache-Control': 'no-store'
+    }
+  });
+}
+
 export async function handleApi(request) {
   try {
-    await init();
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, '');
     const method = request.method;
+    if (path === '/api/config' && method === 'GET') return json({ appleWallet: walletEnabled() });
+
+    await init();
     const body = ['POST', 'PUT', 'PATCH'].includes(method) ? await request.json().catch(() => ({})) : {};
 
     if (path === '/api/vouchers' && method === 'GET') return await listVouchers(url);
@@ -194,6 +211,7 @@ export async function handleApi(request) {
     if ((m = path.match(/^\/api\/vouchers\/(\d+)$/)) && method === 'DELETE') return await deleteVoucher(m[1]);
     if ((m = path.match(/^\/api\/vouchers\/(\d+)\/transactions$/)) && method === 'GET') return await listTransactions(m[1]);
     if ((m = path.match(/^\/api\/vouchers\/(\d+)\/deduct$/)) && method === 'POST') return await deduct(m[1], body);
+    if ((m = path.match(/^\/api\/vouchers\/(\d+)\/pass$/)) && method === 'GET') return await walletPass(m[1]);
 
     return json({ error: 'Not found.' }, 404);
   } catch (e) {
