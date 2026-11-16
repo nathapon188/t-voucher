@@ -225,7 +225,7 @@ export default function App() {
         <section className="card" ref={card} style={{ transform: tilt }}>
           <header className="top">
             <div>
-              <h1>Vouchers</h1>
+              <h1><img src="/logo.ico" alt="" className="logo" />Vouchers</h1>
               <p className="muted small">Select a voucher to deduct credit.</p>
             </div>
             {!adding && <button className="primary small-btn" onClick={() => setAdding(true)}>+ Add voucher</button>}

@@ -46,6 +46,8 @@ body {
 
 /* Text helpers */
 h1 { font-family: var(--serif); color: var(--gold-light); font-size: 26px; font-weight: 600; margin: 0 0 2px; letter-spacing: -0.01em; }
+h1 { display: flex; align-items: center; gap: 10px; }
+.logo { width: 34px; height: 34px; flex: none; border-radius: 6px; }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
 .right { text-align: right; }
