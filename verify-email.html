@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify Your Email</title>
+<style>
+  :root {
+    --bg: #000000;
+    --card: rgba(12, 12, 12, 0.75);
+    --border: rgba(255, 255, 255, 0.09);
+    --text: #ffffff;
+    --muted: #a1a1a1;
+    --accent: #ffffff;
+    --accent-2: #e5e5e5;
+    --ok: #34d399;
+    --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+  }
+  canvas#field {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+  }
+  .vignette {
+    position: fixed; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 30%, rgba(0,0,0,0.85) 100%);
+  }
+  .stage {
+    position: fixed; inset: 0;
+    display: grid; place-items: center;
+    padding: 16px;
+    perspective: 1200px;
+    pointer-events: none;
+  }
+  .card {
+    pointer-events: auto;
+    width: 100%; max-width: 420px;
+    padding: 36px 32px 28px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04) inset;
+    transform-style: preserve-3d;
+    transition: transform 0.25s ease-out;
+    text-align: center;
+  }
+  .icon {
+    width: 56px; height: 56px; margin: 0 auto 20px;
+    border-radius: 14px;
+    display: grid; place-items: center;
+    background: linear-gradient(145deg, rgba(255,255,255,0.14), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.22);
+    transform: translateZ(40px);
+  }
+  .icon svg { width: 26px; height: 26px; color: var(--accent-2); }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 8px; letter-spacing: -0.01em; transform: translateZ(25px); }
+  p.sub { margin: 0 0 26px; color: var(--muted); font-size: 14px; line-height: 1.55; transform: translateZ(15px); }
+  p.sub strong { color: var(--text); font-weight: 500; }
+  .code {
+    display: flex; gap: 8px; justify-content: center; margin-bottom: 18px;
+    transform: translateZ(20px);
+  }
+  .code input {
+    width: 46px; height: 54px;
+    text-align: center; font-size: 22px; font-weight: 600;
+    color: var(--text);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    outline: none;
+    caret-color: var(--accent);
+    transition: border-color .15s, box-shadow .15s, transform .15s;
+  }
+  .code input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,255,255,0.18); }
+  .code input.filled { border-color: rgba(255,255,255,0.45); }
+  .code.error input { border-color: var(--err); animation: shake .35s; }
+  .code.success input { border-color: var(--ok); box-shadow: 0 0 0 3px rgba(52,211,153,0.18); }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+  button.primary {
+    width: 100%; height: 44px;
+    border: 0; border-radius: 10px;
+    background: #ffffff;
+    color: #000; font-size: 15px; font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 8px 24px -10px rgba(255,255,255,0.35);
+    transform: translateZ(20px);
+    transition: filter .15s, opacity .15s;
+  }
+  button.primary:hover { filter: brightness(0.88); }
+  button.primary:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+  .msg { min-height: 20px; margin: 12px 0 0; font-size: 13px; }
+  .msg.err { color: var(--err); }
+  .msg.ok { color: var(--ok); }
+  .foot { margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .foot button {
+    background: none; border: 0; padding: 0; font: inherit;
+    color: var(--accent-2); cursor: pointer;
+  }
+  .foot button:disabled { color: var(--muted); cursor: default; }
+  @media (max-width: 420px) {
+    .card { padding: 28px 20px 22px; }
+    .code { gap: 6px; }
+    .code input { width: 40px; height: 48px; font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="field"></canvas>
+<div class="vignette"></div>
+
+<main class="stage">
+  <section class="card" id="card">
+    <div class="icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>
+      </svg>
+    </div>
+    <h1>Check your email</h1>
+    <p class="sub">We sent a 6-digit verification code to<br><strong id="email">you@example.com</strong></p>
+
+    <form id="form" autocomplete="off">
+      <div class="code" id="code">
+        <input inputmode="numeric" maxlength="1" aria-label="Digit 1">
+        <input inputmode="numeric" maxlength="1" aria-label="Digit 2">
+        <input inputmode="numeric" maxlength="1" aria-label="Digit 3">
+        <input inputmode="numeric" maxlength="1" aria-label="Digit 4">
+        <input inputmode="numeric" maxlength="1" aria-label="Digit 5">
+        <input inputmode="numeric" maxlength="1" aria-label="Digit 6">
+      </div>
+      <button class="primary" id="verify" type="submit" disabled>Verify email</button>
+    </form>
+    <p class="msg" id="msg" role="status"></p>
+    <div class="foot">Didn't get it? <button id="resend" type="button">Resend code</button></div>
+  </section>
+</main>
+
+<script>
+(() => {
+  /* ---------- Box field ---------- */
+  const canvas = document.getElementById('field');
+  const ctx = canvas.getContext('2d');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const TILE_W = 64, TILE_H = 32, BASE = 8;   // isometric tile size + resting side depth
+  const MAX_LIFT = 70, RADIUS = 170;          // mouse influence
+  let W, H, dpr, tiles = [];
+  const mouse = { x: -9999, y: -9999, tx: -9999, ty: -9999, active: false };
+  const ripples = [];
+
+  function build() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    tiles = [];
+    const rows = Math.ceil(H / (TILE_H / 2)) + 6;
+    const cols = Math.ceil(W / TILE_W) + 2;
+    for (let r = -2; r < rows; r++) {
+      for (let c = -1; c < cols; c++) {
+        tiles.push({
+          x: c * TILE_W + (r & 1 ? TILE_W / 2 : 0),
+          y: r * TILE_H / 2,
+          h: 0,
+          seed: Math.random() * Math.PI * 2
+        });
+      }
+    }
+  }
+
+  function poly(pts, fill) {
+    ctx.beginPath();
+    ctx.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+
+  function frame(now) {
+    const t = now / 1000;
+    // smooth mouse follow
+    mouse.x += (mouse.tx - mouse.x) * 0.18;
+    mouse.y += (mouse.ty - mouse.y) * 0.18;
+
+    // drop finished ripples
+    for (let i = ripples.length - 1; i >= 0; i--) if (t - ripples[i].t0 > 3) ripples.splice(i, 1);
+
+    ctx.clearRect(0, 0, W, H);
+    const hw = TILE_W / 2, hh = TILE_H / 2;
+
+    for (const tile of tiles) {
+      // distance in "ground" space (stretch y so the influence is a circle on the iso plane)
+      const dx = tile.x - mouse.x, dy = (tile.y - mouse.y) * 2;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      let target = mouse.active ? MAX_LIFT * Math.exp(-(d * d) / (2 * RADIUS * RADIUS / 2.2)) : 0;
+
+      // idle breathing wave
+      if (!reduceMotion) target += 3 + 3 * Math.sin(t * 1.2 + tile.x * 0.012 + tile.y * 0.025 + tile.seed * 0.3);
+
+      // click / success ripples
+      for (const rp of ripples) {
+        const rx = tile.x - rp.x, ry = (tile.y - rp.y) * 2;
+        const rd = Math.sqrt(rx * rx + ry * ry);
+        const age = t - rp.t0;
+        const front = age * 650;
+        const band = rd - front;
+        target += rp.amp * Math.exp(-(band * band) / (2 * 45 * 45)) * Math.max(0, 1 - age / 3);
+      }
+
+      tile.h += (target - tile.h) * 0.12;
+
+      const x = tile.x, y = tile.y, h = tile.h;
+      if (x < -TILE_W || x > W + TILE_W || y - h < -TILE_H * 2 || y - h > H + TILE_H) continue;
+
+      const k = Math.min(1, h / MAX_LIFT);              // 0..1 lift amount
+      // greyscale: black at rest, brighter grey/white as boxes rise
+      const top = `hsl(0, 0%, ${9 + k * 70}%)`;
+      const left = `hsl(0, 0%, ${5 + k * 35}%)`;
+      const right = `hsl(0, 0%, ${3 + k * 20}%)`;
+
+      const ty = y - h;
+      // left face
+      poly([x - hw, ty, x, ty + hh, x, y + hh + BASE, x - hw, y + BASE], left);
+      // right face
+      poly([x + hw, ty, x, ty + hh, x, y + hh + BASE, x + hw, y + BASE], right);
+      // top face
+      poly([x, ty - hh, x + hw, ty, x, ty + hh, x - hw, ty], top);
+
+      // subtle edge highlight on top face
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.06 + k * 0.4})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x - hw, ty); ctx.lineTo(x, ty - hh); ctx.lineTo(x + hw, ty);
+      ctx.stroke();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  window.addEventListener('resize', build);
+  window.addEventListener('pointermove', e => {
+    mouse.tx = e.clientX; mouse.ty = e.clientY;
+    if (!mouse.active) { mouse.x = e.clientX; mouse.y = e.clientY; }
+    mouse.active = true;
+  });
+  document.addEventListener('pointerleave', () => { mouse.active = false; });
+  window.addEventListener('pointerdown', e => {
+    if (e.target.closest('.card')) return;
+    ripples.push({ x: e.clientX, y: e.clientY, t0: performance.now() / 1000, amp: 40 });
+  });
+
+  build();
+  requestAnimationFrame(frame);
+
+  /* ---------- Card tilt ---------- */
+  const card = document.getElementById('card');
+  if (!reduceMotion) {
+    window.addEventListener('pointermove', e => {
+      const rx = (e.clientY / H - 0.5) * -10;
+      const ry = (e.clientX / W - 0.5) * 12;
+      card.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
+    });
+    document.addEventListener('pointerleave', () => { card.style.transform = ''; });
+  }
+
+  /* ---------- Code input ---------- */
+  const inputs = [...document.querySelectorAll('#code input')];
+  const codeBox = document.getElementById('code');
+  const verifyBtn = document.getElementById('verify');
+  const msg = document.getElementById('msg');
+
+  const value = () => inputs.map(i => i.value).join('');
+  function refresh() {
+    inputs.forEach(i => i.classList.toggle('filled', !!i.value));
+    verifyBtn.disabled = value().length !== 6;
+    codeBox.classList.remove('error');
+    msg.textContent = ''; msg.className = 'msg';
+  }
+
+  inputs.forEach((input, idx) => {
+    input.addEventListener('input', () => {
+      input.value = input.value.replace(/\D/g, '').slice(-1);
+      if (input.value && idx < inputs.length - 1) inputs[idx + 1].focus();
+      refresh();
+    });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !input.value && idx > 0) { inputs[idx - 1].focus(); inputs[idx - 1].value = ''; refresh(); e.preventDefault(); }
+      if (e.key === 'ArrowLeft' && idx > 0) inputs[idx - 1].focus();
+      if (e.key === 'ArrowRight' && idx < inputs.length - 1) inputs[idx + 1].focus();
+    });
+    input.addEventListener('focus', () => input.select());
+    input.addEventListener('paste', e => {
+      const digits = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+      if (!digits) return;
+      e.preventDefault();
+      digits.split('').forEach((d, i) => { if (inputs[i]) inputs[i].value = d; });
+      inputs[Math.min(digits.length, 5)].focus();
+      refresh();
+    });
+  });
+  inputs[0].focus();
+
+  // Demo verification: replace with a real API call.
+  document.getElementById('form').addEventListener('submit', e => {
+    e.preventDefault();
+    const code = value();
+    if (code === '000000') {
+      codeBox.classList.add('error');
+      msg.textContent = 'That code is incorrect. Please try again.'; msg.className = 'msg err';
+      return;
+    }
+    codeBox.classList.add('success');
+    msg.textContent = 'Email verified. Redirecting...'; msg.className = 'msg ok';
+    verifyBtn.disabled = true;
+    const r = card.getBoundingClientRect();
+    ripples.push({ x: r.left + r.width / 2, y: r.top + r.height / 2, t0: performance.now() / 1000, amp: 60 });
+  });
+
+  // Resend with cooldown
+  const resend = document.getElementById('resend');
+  resend.addEventListener('click', () => {
+    let s = 30;
+    resend.disabled = true;
+    msg.textContent = 'A new code has been sent.'; msg.className = 'msg ok';
+    resend.textContent = `Resend in ${s}s`;
+    const timer = setInterval(() => {
+      s--;
+      if (s <= 0) { clearInterval(timer); resend.disabled = false; resend.textContent = 'Resend code'; }
+      else resend.textContent = `Resend in ${s}s`;
+    }, 1000);
+  });
+})();
+</script>
+</body>
+</html>
