@@ -1,5 +1,5 @@
 // Local development server: runs the same API code as the Netlify Function.
-// Reads NETLIFY_DATABASE_URL from .env.
+// Reads NETLIFY_DB_URL from .env.
 import 'dotenv/config';
 import express from 'express';
 import { handleApi } from './api.js';

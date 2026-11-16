@@ -1,16 +1,22 @@
 // Voucher API shared by the Netlify Function (production) and the Express dev server (local).
 // Takes a standard Request and returns a standard Response.
-import { neon } from '@neondatabase/serverless';
+import { getDatabase, MissingDatabaseConnectionError } from '@netlify/database';
 import crypto from 'node:crypto';
 
 let sql;
 let ready;
 
+// Netlify sets NETLIFY_DB_URL automatically; locally it comes from .env
 function db() {
   if (!sql) {
-    const url = process.env.NETLIFY_DATABASE_URL;
-    if (!url) throw Object.assign(new Error('NETLIFY_DATABASE_URL is not set.'), { status: 500 });
-    sql = neon(url);
+    try {
+      sql = getDatabase().sql;
+    } catch (e) {
+      if (e instanceof MissingDatabaseConnectionError) {
+        throw Object.assign(new Error('NETLIFY_DB_URL is not set.'), { status: 500 });
+      }
+      throw e;
+    }
   }
   return sql;
 }
@@ -111,27 +117,24 @@ async function createVoucher(body) {
     return json({ error: 'Voucher no. can only use letters, numbers and dashes (max 40 characters).' }, 400);
   }
 
+  // Returns no row if the code already exists
   const insert = code => s`
     INSERT INTO vouchers (code, description, initial_cents, balance_cents, expires_at)
     VALUES (${code}, ${description}, ${cents}::int, ${cents}::int,
             CASE WHEN ${expiryDate}::date IS NULL THEN NULL
                  ELSE (${expiryDate}::date + time '23:59:59') AT TIME ZONE 'Australia/Sydney' END)
+    ON CONFLICT (code) DO NOTHING
     RETURNING *`;
 
   if (customCode) {
-    try {
-      return json(view((await insert(customCode))[0]), 201);
-    } catch (e) {
-      if (e.code === '23505') return json({ error: `Voucher no. ${customCode} already exists.` }, 409);
-      throw e;
-    }
+    const rows = await insert(customCode);
+    return rows.length
+      ? json(view(rows[0]), 201)
+      : json({ error: `Voucher no. ${customCode} already exists.` }, 409);
   }
   for (let i = 0; i < 5; i++) {
-    try {
-      return json(view((await insert(newCode()))[0]), 201);
-    } catch (e) {
-      if (e.code !== '23505') throw e; // retry only on duplicate code
-    }
+    const rows = await insert(newCode());
+    if (rows.length) return json(view(rows[0]), 201);
   }
   return json({ error: 'Could not generate a unique code. Try again.' }, 500);
 }

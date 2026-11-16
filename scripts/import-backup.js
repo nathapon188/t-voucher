@@ -1,14 +1,14 @@
 // One-off: copy vouchers from backup/render-export.json into Netlify DB.
-// Usage: put NETLIFY_DATABASE_URL in .env, then run: npm run import-backup
+// Usage: put NETLIFY_DB_URL in .env, then run: npm run import-backup
 // Safe to re-run: vouchers whose code already exists are skipped.
 import 'dotenv/config';
 import fs from 'node:fs';
-import { neon } from '@neondatabase/serverless';
+import { getDatabase } from '@netlify/database';
 import { handleApi } from '../server/api.js';
 
 const file = process.argv[2] || 'backup/render-export.json';
 const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-const sql = neon(process.env.NETLIFY_DATABASE_URL);
+const { sql } = getDatabase();
 
 // Make sure the tables exist (the API creates them on first use)
 await handleApi(new Request('http://localhost/api/vouchers'));
