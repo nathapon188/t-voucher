@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 // Always-visible scroll bar for touch devices, where browsers only flash an overlay
 // scrollbar while scrolling. Mirrors the scroll position of `target` and can be dragged.
-export default function ScrollRail({ target }) {
+export default function ScrollRail({ target, inline = false }) {
   const rail = useRef(null);
   const drag = useRef(null);
   const [m, setM] = useState({ show: false, top: 0, size: 0 });
@@ -29,12 +29,17 @@ export default function ScrollRail({ target }) {
     el.addEventListener('scroll', update, { passive: true });
     const ro = new ResizeObserver(update);
     ro.observe(el);
-    [...el.children].forEach(c => ro.observe(c));
+    const watchChildren = () => [...el.children].forEach(c => ro.observe(c));
+    watchChildren();
+    // Rows are added and removed as vouchers load or the search changes
+    const mo = new MutationObserver(() => { watchChildren(); update(); });
+    mo.observe(el, { childList: true });
     window.addEventListener('resize', update);
     return () => {
       cancelAnimationFrame(raf);
       el.removeEventListener('scroll', update);
       ro.disconnect();
+      mo.disconnect();
       window.removeEventListener('resize', update);
     };
   }, [target]);
@@ -59,7 +64,7 @@ export default function ScrollRail({ target }) {
   };
 
   return (
-    <div ref={rail} className={`scroll-rail ${m.show ? '' : 'off'}`} onPointerDown={onRailDown} aria-hidden="true">
+    <div ref={rail} className={`scroll-rail ${inline ? 'inline' : ''} ${m.show ? '' : 'off'}`} onPointerDown={onRailDown} aria-hidden="true">
       <div
         className="scroll-rail-thumb"
         style={{ height: m.size, transform: `translateY(${m.top}px)` }}

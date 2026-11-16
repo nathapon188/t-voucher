@@ -115,6 +115,7 @@ button.ghost:hover { background: rgba(212,175,55,0.1); }
 /* Two-column layout */
 .layout { display: grid; grid-template-columns: 320px 1fr; gap: 16px; min-height: 420px; }
 .list-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.list-wrap { position: relative; flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .list {
   flex: 1; overflow-y: auto; max-height: 460px;
   border: 1px solid var(--border); border-radius: 12px; background: var(--panel);
@@ -222,8 +223,8 @@ button.ghost:hover { background: rgba(212,175,55,0.1); }
 /* Always-visible scroll bar on touch devices (see ScrollRail.jsx) */
 .scroll-rail { display: none; }
 @media (hover: none) and (pointer: coarse) {
-  .stage { scrollbar-width: none; }
-  .stage::-webkit-scrollbar { display: none; }
+  .stage, .list { scrollbar-width: none; }
+  .stage::-webkit-scrollbar, .list::-webkit-scrollbar { display: none; }
   .scroll-rail {
     display: block; position: fixed; top: 8px; bottom: 8px; right: 3px; width: 6px; z-index: 40;
     border-radius: 6px; background: rgba(212,175,55,0.14); touch-action: none;
@@ -235,4 +236,6 @@ button.ghost:hover { background: rgba(212,175,55,0.1); }
   }
   /* Wider invisible touch target so the thin thumb is easy to grab */
   .scroll-rail-thumb::before { content: ""; position: absolute; top: 0; bottom: 0; left: -16px; right: -4px; }
+  .scroll-rail.inline { position: absolute; top: 8px; bottom: 8px; right: 4px; width: 5px; z-index: 2; }
+  .scroll-rail.inline .scroll-rail-thumb::before { left: -10px; }
 }

@@ -227,6 +227,7 @@ export default function App() {
   const field = useRef(null);
   const card = useRef(null);
   const stage = useRef(null);
+  const list = useRef(null);
   const [vouchers, setVouchers] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState('');
@@ -292,7 +293,8 @@ export default function App() {
           <div className="layout">
             <div className="list-col">
               <input className="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search code or description" />
-              <div className="list">
+              <div className="list-wrap">
+              <div className="list" ref={list}>
                 {loading && <div className="muted small pad">Loading...</div>}
                 {error && <div className="msg err pad">{error}</div>}
                 {!loading && !error && vouchers.length === 0 && (
@@ -311,6 +313,8 @@ export default function App() {
                     <Progress v={v} />
                   </button>
                 ))}
+              </div>
+              <ScrollRail target={list} inline />
               </div>
             </div>
 
