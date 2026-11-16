@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import BoxField from './BoxField.jsx';
 import Barcode from './Barcode.jsx';
+import ScrollRail from './ScrollRail.jsx';
 import { api, money, date, dateTime } from './api.js';
 import { SALESPEOPLE } from '../server/salespeople.js';
 
@@ -225,6 +226,7 @@ function VoucherDetail({ v, onChanged, onDeleted, celebrate, appleWallet }) {
 export default function App() {
   const field = useRef(null);
   const card = useRef(null);
+  const stage = useRef(null);
   const [vouchers, setVouchers] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState('');
@@ -270,7 +272,7 @@ export default function App() {
     <>
       <BoxField ref={field} />
       <div className="vignette" />
-      <main className="stage">
+      <main className="stage" ref={stage}>
         <section className="card" ref={card} style={{ transform: tilt }}>
           <header className="top">
             <div>
@@ -334,6 +336,7 @@ export default function App() {
           </div>
         </section>
       </main>
+      <ScrollRail target={stage} />
     </>
   );
 }

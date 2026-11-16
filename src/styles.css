@@ -218,3 +218,21 @@ button.ghost:hover { background: rgba(212,175,55,0.1); }
 .sp-btn:hover, .sp-btn:focus-visible { background: rgba(212,175,55,0.18); border-color: var(--gold); outline: none; }
 .modal-actions { display: flex; justify-content: flex-end; }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Always-visible scroll bar on touch devices (see ScrollRail.jsx) */
+.scroll-rail { display: none; }
+@media (hover: none) and (pointer: coarse) {
+  .stage { scrollbar-width: none; }
+  .stage::-webkit-scrollbar { display: none; }
+  .scroll-rail {
+    display: block; position: fixed; top: 8px; bottom: 8px; right: 3px; width: 6px; z-index: 40;
+    border-radius: 6px; background: rgba(212,175,55,0.14); touch-action: none;
+  }
+  .scroll-rail.off { visibility: hidden; }
+  .scroll-rail-thumb {
+    position: absolute; top: 0; left: 0; right: 0; border-radius: 6px;
+    background: linear-gradient(180deg, #f3d98b, #c9a136);
+  }
+  /* Wider invisible touch target so the thin thumb is easy to grab */
+  .scroll-rail-thumb::before { content: ""; position: absolute; top: 0; bottom: 0; left: -16px; right: -4px; }
+}
